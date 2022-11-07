@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 2.8)
+project( image_processing )
+find_package(OpenCV REQUIRED)
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
+message(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/src )
+
+set(SOURCES main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/image_processing.cpp ${CMAKE_CURRENT_SOURCE_DIR}/include/image_processing.h)
+add_executable( image_processing ${SOURCES} )
+target_link_libraries( image_processing  ${OpenCV_LIBS})
