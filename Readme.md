@@ -1,5 +1,3 @@
-*Image Processing Functions
-
 Implementation of various image processing algorithms under namespace image_processing
 
 build:
