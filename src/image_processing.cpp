@@ -22,7 +22,7 @@ void image_processing::hough_circle_detection(cv::Mat input_img, bool debug) {
     if (debug) cv::imshow("binary image", binary_img);
 
     // laplacian convolution
-    cv::Mat laplacian_img = image_processing::conv_laplacian(binary_img);
+    cv::Mat laplacian_img = image_processing::laplacian_edge(binary_img);
     if (debug) cv::imshow("laplacian image", laplacian_img);
 
     // sobel edge detection
@@ -112,7 +112,7 @@ cv::Mat image_processing::conv_image_2d_1chan(cv::Mat input_img, vector<vector<i
     return output_img;
 }
 
-cv::Mat image_processing::conv_laplacian(cv::Mat input_img) {
+cv::Mat image_processing::laplacian_edge(cv::Mat input_img) {
     vector<vector<int>> laplacian_kernel = {{-1, -1, -1},{-1, 8, -1},{-1, -1, -1}};
 
     cv::Mat padded_img = image_processing::pad_image(input_img, 1, 1);
