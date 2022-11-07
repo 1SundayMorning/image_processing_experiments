@@ -136,10 +136,22 @@ cv::Mat image_processing::sobel_edge(cv::Mat input_img) {
         for (int j = 0; j < input_img.cols; j++) {
             int convx = xconv_img.at<uchar>(i,j);
             int convy = yconv_img.at<uchar>(i,j);
-            result.at<uchar>(i,j) = sqrt(convx * convx + convy * convy);
+            int result_val = sqrt(convx * convx + convy * convy);
+            result.at<uchar>(i,j) = result_val;
+
+            if (result_val < min_val) min_val = result_val;
+            if (result_val > max_val) max_val = result_val;
         }
     }
 
+    int min_max_differential = max_val - min_val;
+
+    for (int i = 0; i < result.rows; i++) {
+        for (int j = 0; j < result.cols; j++) {
+            float ratio = ((float)result.at<uchar>(i,j) - min_val) / (float)(min_max_differential);
+            result.at<uchar>(i,j) = ratio * 255;
+        }
+    }
 
 
     return result;
