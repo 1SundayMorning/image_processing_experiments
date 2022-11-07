@@ -8,15 +8,15 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
 
-    string path = "images/chaz.jpeg";
+    string path = "images/coins.jpeg";
     Mat raw_img = imread(path);
 
     image_processing::hough_circle_detection(raw_img);
     
     // // gauss blur image
-    // Mat gauss_img = image_processing::integrated_gaussian_blur(raw_img, 3, 7);
+    // Mat gauss_img = image_processing::gaussian_blur(raw_img, 3, 7);
     // // take image thresh
-    // Mat thresh_img = image_processing::color_img_to_thresh(raw_img);
+    // Mat thresh_img = image_processing::convert_binary_image(raw_img);
 
     // imshow("gauss image", gauss_img);
     // imshow("thresh image", thresh_img);
