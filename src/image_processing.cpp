@@ -29,6 +29,44 @@ void image_processing::hough_circle_detection(cv::Mat input_img, bool debug) {
     cv::Mat sobel_img = sobel_edge(binary_img); 
     if (debug) cv::imshow("sobel image", sobel_img);
 
+    int max_radius = min(input_img.rows, input_img.cols);
+    int min_radius = 3;
+
+    double cos_thetas[360];
+    double sin_thetas[360];
+    for (int i = 0; i < 360; i++) {
+        cos_thetas[i] = cos(i * PI/180);
+        sin_thetas[i] = sin(i * PI/180);
+    }
+
+    vector<vector<int>> circles;
+    for (int r = min_radius; r <= max_radius; r++) {
+        for (int theta = 0; theta < 360; theta++) {
+            circles.push_back({r, static_cast<int>(r * cos_thetas[theta]), static_cast<int>(r * sin_thetas[theta])});
+
+        }
+    }
+
+    vector<vector<vector<int>>> Accumulator(input_img.rows, vector<vector<int>>(input_img.cols, vector<int>(max_radius, 0)));
+
+    for (int i = 0; i < input_img.rows; i++) {
+        for (int j = 0; j < input_img.cols; j++) {
+            if (laplacian_img.at<uchar>(i,j)) {
+                for (auto candidate : circles) {
+                    // int x_center = i - 
+                    cout<<"r: "<<candidate[0]<<endl;
+                    cout<<"r * costheta: "<<candidate[1]<<endl;
+                    cout<<"r * sintheta: "<<candidate[2]<<endl;
+                }
+                // for (auto candidate = circles.begin(); candidate != circles.end(); candidate++) {
+                //     for (auto iter = candidate->begin(); iter != candidate->end(); iter++) {
+                //         cout<<*iter<<endl;
+                //     }
+                // }
+            }
+        }
+    }
+
 
 }
 

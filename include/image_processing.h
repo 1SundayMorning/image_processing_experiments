@@ -2,6 +2,7 @@
 #define IMAGE_PROCESSING_H
 
 #include <opencv2/opencv.hpp>
+#include <math.h>
 #include <vector>
 
 using namespace std;
