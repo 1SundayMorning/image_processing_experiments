@@ -11,8 +11,16 @@ int main(int argc, char* argv[]) {
     string path = "images/coins.jpeg";
     Mat raw_img = imread(path);
 
-    image_processing::hough_circle_detection(raw_img);
-    
+    vector<vector<vector<int>>> circles;
+    circles = image_processing::hough_circle_detection(raw_img, 8.1, 15, 20, 60);
+
+    Mat result_circles = image_processing::draw_circles(raw_img, circles);
+
+    imshow("result circles", result_circles);
+
+    // Mat circles = image_processing::opencv_hough(raw_img);
+
+    // imshow("circles image", circles);
     // // gauss blur image
     // Mat gauss_img = image_processing::gaussian_blur(raw_img, 3, 7);
     // // take image thresh

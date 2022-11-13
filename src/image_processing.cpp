@@ -2,35 +2,25 @@
 
 #define PI 3.14159
 
-void image_processing::hough_circle_detection(cv::Mat input_img, bool debug) {
-    debug = true;
-    if (debug) cv::imshow("input_image", input_img);
-
+vector<vector<vector<int>>> image_processing::hough_circle_detection(cv::Mat input_img, float threshold, int region, int min_radius, int max_radius, bool debug) {
     // gaussian blur image
     double sigma = 3;
     uint32_t kernel_size = 7;
     cv::Mat gauss_img = image_processing::gaussian_blur(input_img, sigma, kernel_size);
-    if (debug) cv::imshow("gauss_image", gauss_img);
 
     // convert to greyscale
     cv::Mat grey_img;
     cv::cvtColor(gauss_img, grey_img, cv::COLOR_BGR2GRAY);
-    if (debug) cv::imshow("grey_image", grey_img);
 
     // convert to binary image using thresholding
     cv::Mat binary_img = image_processing::convert_binary_image(grey_img);
-    if (debug) cv::imshow("binary image", binary_img);
 
     // laplacian convolution
     cv::Mat laplacian_img = image_processing::laplacian_edge(binary_img);
-    if (debug) cv::imshow("laplacian image", laplacian_img);
+    cv::imshow("laplacian image: ", laplacian_img);
 
-    // sobel edge detection
-    cv::Mat sobel_img = sobel_edge(binary_img); 
-    if (debug) cv::imshow("sobel image", sobel_img);
-
-    int max_radius = min(input_img.rows, input_img.cols);
-    int min_radius = 3;
+    int image_rows = input_img.rows;
+    int image_cols = input_img.cols;
 
     double cos_thetas[360];
     double sin_thetas[360];
@@ -47,28 +37,142 @@ void image_processing::hough_circle_detection(cv::Mat input_img, bool debug) {
         }
     }
 
-    vector<vector<vector<int>>> Accumulator(input_img.rows, vector<vector<int>>(input_img.cols, vector<int>(max_radius, 0)));
-
-    for (int i = 0; i < input_img.rows; i++) {
-        for (int j = 0; j < input_img.cols; j++) {
+    vector<vector<int>> edges;
+    for (int i = 0; i < laplacian_img.rows; i++) {
+        for (int j = 0; j < laplacian_img.cols; j++) {
             if (laplacian_img.at<uchar>(i,j)) {
-                for (auto candidate : circles) {
-                    // int x_center = i - 
-                    cout<<"r: "<<candidate[0]<<endl;
-                    cout<<"r * costheta: "<<candidate[1]<<endl;
-                    cout<<"r * sintheta: "<<candidate[2]<<endl;
+                edges.push_back({i, j});
+            }
+        }
+    }
+    cout<<"num edge points: "<<edges.size()<<endl;
+
+    cout<<"circles size: "<<circles.size()<<endl;
+
+    // padded with the diameter of the maximum radius
+    vector<vector<vector<int>>> Accumulator(max_radius, vector<vector<int>>(max_radius * 2 + input_img.rows, vector<int>(max_radius * 2 + input_img.cols, 0)));
+    vector<vector<vector<int>>> Result(max_radius, vector<vector<int>>(max_radius * 2 + input_img.rows, vector<int>(max_radius * 2 + input_img.cols, 0)));
+    for (int r = min_radius; r < max_radius; r++) {
+        // circle blueprint
+        vector<vector<int>> blueprint(2 * (r + 1), vector<int>(2 * (r + 1), 0));
+        vector<int> blueprint_center = {r + 1, r + 1};
+        for (int t = 0; t < 360; t++) {
+            int circle_x_coord = blueprint_center[0] + (int)(r * cos_thetas[t]);
+            int circle_y_coord = blueprint_center[1] + (int)(r * sin_thetas[t]);
+            blueprint[circle_x_coord][circle_y_coord] = 1;
+        }
+        int circle_pt_count = 360;
+
+        // cout<<"edges x size: "<<edges.size()<<endl;
+        // cout<<"edges y size: "<<edges[0].size()<<endl;
+        // cout<<"loop thru edges"<<endl;
+        for (int i = 0; i < edges.size(); i++) {
+            int X_0 = edges[i][0] - blueprint_center[0] + max_radius;
+            int X_1 = edges[i][0] + blueprint_center[0] + max_radius;
+            int Y_0 = edges[i][1] - blueprint_center[1] + max_radius;
+            int Y_1 = edges[i][1] + blueprint_center[1] + max_radius;
+            // if(X_0 > 400 || X_1 > 400) {
+            //     cout<<"X_0: "<<X_0<<endl;
+            //     cout<<"X_1: "<<X_1<<endl;
+            // }
+            // if(Y_0 > 400 || Y_1 > 400) {
+            //     cout<<"Y_0: "<<Y_0<<endl;
+            //     cout<<"Y_1: "<<Y_1<<endl;
+            // }
+            // cout<<"Y_0: "<<Y_0<<endl;
+            // cout<<"Y_1: "<<Y_1<<endl;
+            // if (X_0 >= image_cols || X_1 >= image_cols || Y_0 >= image_rows || Y_1 >= image_rows) {
+            //     continue;
+            // }
+            vector<int> X = {X_0, X_1};
+            vector<int> Y = {Y_0, Y_1};
+            // cout<<"add blueprint pts"<<endl;
+            for (int x = 0; x < X[1] - X[0]; x++) {
+                for (int y = 0; y < Y[1] - Y[0]; y++) {
+                    Accumulator[r][x + X[0]][y + Y[0]] += blueprint[x][y];
                 }
-                // for (auto candidate = circles.begin(); candidate != circles.end(); candidate++) {
-                //     for (auto iter = candidate->begin(); iter != candidate->end(); iter++) {
-                //         cout<<*iter<<endl;
-                //     }
-                // }
+            }
+        }
+        // cout<<"filter Accumulator"<<endl;
+        for (int x = 0; x < Accumulator[r].size(); x++) {
+            for (int y = 0; y < Accumulator[r][x].size(); y++) {
+                if (Accumulator[r][x][y] < threshold * circle_pt_count / r) {
+                    Accumulator[r][x][y] = 0;
+                }
+            }
+        }
+    }
+    // cout<<Accumulator[0].size()/region<<endl;
+    // cout<<Accumulator[0][0].size()/region<<endl;
+    cout<<"start build result matrix"<<endl;
+    for (int r = min_radius; r < max_radius; r++) {
+        for (int x_block = 0; x_block < Accumulator[r].size(); x_block += region) {
+            for (int y_block = 0; y_block < Accumulator[r][0].size(); y_block += region) {
+                int maximum = 0;
+                for (int x = x_block; x < x_block + region && x < Accumulator[r].size(); x++) {
+                    for (int y = y_block; y < y_block + region && y < Accumulator[r][0].size(); y++) {
+                        // if (y > 500) {
+                        //     cout<<"Y > 500: "<<y<<endl;
+                        // }
+                        if (Accumulator[r][x][y] > maximum) {
+                            maximum = Accumulator[r][x][y];
+                            Result[r][x][y] = 1;
+
+                        }
+                    }
+                }
             }
         }
     }
 
-
+    cout<<"End of hough"<<endl;
+    return Result;
 }
+
+cv::Mat image_processing::draw_circles(cv::Mat input_image, vector<vector<vector<int>>> input_circles) {
+    cv::Scalar line_color(255, 0, 0);//Color of the circle
+    int thickness = 2;
+
+    cv::Mat result_img = input_image.clone();
+
+    for(int r = 0; r < input_circles.size(); r++) {
+        for (int x = 0; x < input_circles[r].size(); x++) {
+            for (int y = 0; y < input_circles[r][x].size(); y++) {
+                if (input_circles[r][x][y]) {
+                    cv::Point center(y,x);
+                    cv::circle(result_img, center, r, line_color, thickness);
+                }
+            }
+        }
+    }
+    return result_img;
+}
+
+cv::Mat image_processing::opencv_hough(cv::Mat input_img) {
+    cv::Mat grey_img;
+    cv::cvtColor(input_img, grey_img, cv::COLOR_BGR2GRAY);
+    cv::imshow("Grey", grey_img);
+    cv::medianBlur(grey_img, grey_img, 5);
+    cv::imshow("grey blurred", grey_img);
+    vector<cv::Vec3f> circles;
+    HoughCircles(grey_img, circles, cv::HOUGH_GRADIENT, 1,
+                 grey_img.rows/16,
+                 100, 30, 30, 50
+    );
+    cout<<"hough complete"<<endl;
+    for( size_t i = 0; i < circles.size(); i++ )
+    {
+        cv::Vec3i c = circles[i];
+        cv::Point center = cv::Point(c[0], c[1]);
+        // circle center
+        cv::circle(input_img, center, 1, cv::Scalar(0,100,100), 3, cv::LINE_AA);
+        // circle outline
+        int radius = c[2];
+        circle(input_img, center, radius, cv::Scalar(255,0,255), 3, cv::LINE_AA);
+    }
+    return input_img;
+}
+
 
 cv::Mat image_processing::pad_image(cv::Mat input_img, uint32_t pad_height, uint32_t pad_width) {
     uint32_t image_height = input_img.rows;
@@ -286,15 +390,6 @@ void image_processing::create_gaussian_kernel(double sigma, double** kernel, uin
             kernel[i][j] /= sum;
         }
     }
-
-    double check_sum = 0;
-    // for (int i = 0; i < kernel_size; i++) {
-    //     for (int j = 0; j < kernel_size; j++ ) {
-    //         check_sum += kernel[i][j];
-    //         cout<<kernel[i][j]<<" ";
-    //     }
-    //     cout<<endl;
-    // }
 }
 
 cv::Mat image_processing::conv_gaussian(cv::Mat input_img, double** kernel, uint32_t kernel_size) {
